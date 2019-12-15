@@ -1,0 +1,270 @@
+---
+title: "Project 2"
+author: "Michaela Priess"
+date: "11/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{R}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(lmtest)
+library(sandwich)
+library(plotROC)
+library(glmnet)
+library(carData)
+```
+
+##Introduction
+  The Mroz data set provides information about women's labor-force participation in the United States. The data was collected from the Panel Study of Income Dynamics (PSID), and all of the observations were made for married women. This data set was obtained from R. Overall, the Mroz data set contains 8 variables. The "lfp" variable indicates whether a woman participates or doesn't participate in the labor-force. The "k5" variable indicates the number of children 5 years of age or younger a woman has. The "k618" variable indicates the number of children 6-18 years old that a woman has. The "age" variable indicates how old the woman is in years. The "wc" variable indicates if the woman attended college. The "hc" variable indicates if the woman's husband attended college. The "lwg" variable shows the woman's wage rate if they are in the labor-force. If the are not in the labor-force, a value was given based on a regression the study did of lwg on the other variables. The "inc" variable indicates family income not including the wife's income.
+  
+##Part 1
+  In total, I performed 1 MANOVA and 4 ANOVAs for a total of 5 tests. Since the categorical response variable only has two levels, it was not necessary to perform post-hoc t-tests. I did not include the numeric variable "lwg" in the MANOVA because I didn't think it made sense to add it considering a log-wage rate was calculated for women not participating in the labor-force.With a total of 5 tests, there is a 0.226 probability of making at least one type I error. Using bonferroni correction, the significance level should be adjusted to 0.01. With this adjusted significance level, only two variables, "k5" and "inc", showed significant differences in labor force participation. Before the adjustment, age was a significant variable, but it lost significance once the adjustment was made.  In both instances, the k618 variable was not significant. For a MANOVA, there are many assumptions that need to be met such as random samples, multivariate normality of the dependent variables, homogeneity of within group covariance matrices, linear relationships between the dependent variables, no extreme mutlivariate outliers, and no multicollinearity. It is very likely that all of the assumptions were not met with this data. The sample is not completely random since only married women were included in the study, and it is likely that not every dependent variable meets multivariate normality.
+```{R}
+#MANOVA
+man <- manova(cbind(k5, k618, age, inc) ~ lfp, data = Mroz)
+summary(man)
+
+#ANOVAs
+summary.aov(man)
+
+#Probability of at least one type I error
+1 - ((1 - 0.05)^5)
+
+#Bonferroni correction
+0.05/5
+```
+
+##Part 2
+  I chose to run a randomized t-test to see if there is a significant mean difference in log wage rate between women who attended college and women who did not go to college. The actual mean difference in log wage rate between the college and no college group was 0.406. For the randomization test, the null hypothesis was that the mean log wage rate is the same for women who attended college and women who did not attend college. The alternative hypothesis was that the mean log wage rate is different for women who attended college versus women who did not attend college. The p-value of the randomization test was 0. This indicates that there is a significant mean difference in log wage rate between women who attended college and women who did not attend college. It would be very unlikely to get a mean difference as large as the actual mean difference when looking at a randomly sampled distribution.
+```{R}
+#H0: The mean log wage rate is the same for women who attended college vs. did not attend college.
+#HA:The mean log wage rate is different for women who attended college vs. did not attend college.
+
+#Actual Mean Difference
+Mroz %>% group_by(wc) %>% summarise(means = mean(lwg)) %>% summarise(diff(means))
+
+#Randomization Test
+random_dist <- vector()
+
+for (i in 1:5000){
+  new <- data.frame(lwg = sample(Mroz$lwg), wc = Mroz$wc)
+  random_dist[i] <- mean(new[new$wc == "yes",]$lwg) - 
+    mean(new[new$wc == "no",]$lwg)
+}
+
+#p-value
+mean(random_dist > 0.406)*2
+
+#Plot
+hist(random_dist, main = "Null Distribution", xlab = "Mean Differences", xlim = c(-0.2, 0.5)); abline(v = 0.406, col = "red")
+```
+
+##Part 3
+  Controlling for age, there was a significant difference in log wage rate between women who attended college and women who did not attend college. When controlling for age, women who did attend college had a wage rate that was on average 0.406 greater than that of women who did not attend college. When controlling for college attendance, there was not a significant effect of age on log wage rate. When controlling for college attendance, for every 1 year increase in age, log wage rate only increased by 0.00392 on average. The effect of age on log wage rate was 0.00538 less when a woman did attend college as compared to a woman that did not attend college. However, this interaction was not significant.
+```{R}
+#Mean-center age
+age_c <- Mroz$age - mean(Mroz$age, na.rm = TRUE)
+
+#Linear Regression
+lrmod <- lm(lwg ~ wc * age_c, data = Mroz)
+summary(lrmod)
+```
+
+```{R}
+#Regression Plot 
+ggplot(Mroz, aes(x = age_c, y = lwg, color = wc)) + 
+  geom_point() + geom_smooth(method = "lm", se = FALSE, fullrange = T) +
+  xlab("Age (years)") + ylab("Log Wage Rate") +
+  labs(color = "Attended College") + ggtitle("Effects of Age and College Attendance on Log Wage Rate")
+```
+
+Not all of the assumptions were met for a linear regression. For the most part, the linearity assumption seemed to be met. According to the Kolmogorov-Smirnov test, the assumption of normality was not met. According to the Breusch-Pagan test, the homoskedasticity assumption was met.
+```{R}
+#Checking Assumptions
+resids <- lrmod$residuals
+fitvals <- lrmod$fitted.values
+
+#Linearity Assumption 
+ggplot() + geom_point(aes(x = fitvals, y = resids)) + geom_hline(yintercept = 0, color = "red")
+
+#Normality Assumption 
+ks.test(resids, "pnorm", mean=0, sd(resids))
+
+#Homoskedasticity Assumption
+bptest(lrmod)
+```
+
+When the regression was rerun using robust standard errors, the results did not differ from the first linear regression that was run. Attending college still had a significant effect on log wage rate. Like in the first linear regression, age did not have a significant effect on log wage rate, and the interaction between attending college and age was still not significant. Using the adjusted R-squared, this model only acounts for 0.0954 of the variation in the log wage rate (the outcome).
+```{R}
+#Regression with robust standard errors
+coeftest(lrmod, vcov = vcovHC(lrmod))
+
+#Using adjusted R-squared, my model accounts for a proportion of 0.0954 of the variation in the outcome.
+```
+
+##Part 4
+  The bootstrapped standard errors were not the exact same as those seen in the original linear regression, but they were all extremely similar to the original standard errors obtained. The bootstrapped standard errors were similar to the robust standard errors as well, but they weren't as similar to them as they were to the original standard errors. Due to this similarity in standard errors, the p-values are probably quite similar as well.
+```{R}
+#Bootstrap Residuals
+resid_resamp <- replicate(5000,{
+  new_resids <- sample(resids, replace = TRUE)
+  newdat <- Mroz
+  newdat$new_y <- fitvals + new_resids
+  fit2 <- lm(new_y ~ wc * age_c, data = newdat)
+  coef(fit2)
+})
+
+#Bootstrapped Standard Errors
+resid_resamp %>% t %>% as.data.frame %>% summarize_all(sd)
+```
+
+##Part 5
+  Both having kids 5 and under and being older in age significantly decreases the log-odds of participating in the labor-force. Controlling for age, for every one unit increase in number of kids 5 and under, the odds of participating in the labor force is multiplied by a factor of 0.267. Controlling for number of kids 5 and under, for every one year increase in age, the odds of participating in the labor force is multiplied by a factor of 0.943.
+```{R}
+#Logistic Regression
+logmod <- glm(lfp ~ k5 + age, data = Mroz, family = "binomial")
+coeftest(logmod)
+exp(coef(logmod))
+```
+
+```{R}
+#Confusion Matrix
+prob <- predict(logmod, type = "response")
+table(prediction = as.numeric(prob > 0.5), truth = Mroz$lfp) %>% addmargins
+```
+
+  This model had an accuracy of 0.636, a sensitivity of 0.794, a specificity of 0.428, and precision of 0.646. Overall, these numbers weren't great. This model did fairly well in regards to sensitivity, in that it correctly identified 79.4% of the women who do participate in the labor force. The model did poorly in regards to specificity in that it only correctly identified 42.8% of the women who do not participate in the labor force. The model also did poorly in regards to precision in that only 64.6% of women predicted to be participating in the labor force actually were. The accuracy of the model wasn't great either in that only 63.6% of the total test population was correctly identified as either participating or not participating in the labor force.
+```{R}
+#Accuracy = 0.636
+(340 + 139)/753
+
+#Sensitivity (TPR) = 0.794
+340/428
+
+#Specificity (TNR) = 0.428
+139/325
+
+#Precision (PPV) = 0.646
+340/526
+```
+
+```{R}
+#Density Plot
+logit <- predict(logmod)
+
+ggplot(Mroz, aes(logit, fill = Mroz$lfp)) + geom_density(alpha = 0.3) +
+  geom_vline(xintercept = 0, lty = 2) + xlab("Log-Odds") +
+  ylab("Density") + ggtitle("Density of Log-Odds by Labor-Force Participation") +
+  labs(fill = "Labor-Force Participation")
+```
+
+The shape of the ROC curve itslef indicates that this model does not have good predictive capabilities, and the AUC further reinforces this. The calculated AUC for this model is 0.668 which is poor.
+```{R}
+#ROC Curve and AUC Calculation
+Mroz1 <- Mroz %>% mutate(y = case_when(lfp == "yes" ~ 1, lfp == "no" ~ 0))
+
+ROC_plot <- ggplot(Mroz1) + geom_roc(aes(d = y, m = prob), n.cuts = 0)
+ROC_plot
+
+calc_auc(ROC_plot)
+```
+
+After performing a 10-fold cross validation, the accuracy, sensitivity, and recall values were very similar to those that were originally obtained. When first run, accuracy was 0.620, sensitivity was 0.796, specificity was 0.398, precision was 0.634, and the auc was 0.670.
+```{R}
+#10-fold CV
+
+class_diag<-function(probs,truth){
+  
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+  acc=sum(diag(tab))/sum(tab)
+  sens=tab[2,2]/colSums(tab)[2]
+  spec=tab[1,1]/colSums(tab)[1]
+  ppv=tab[2,2]/rowSums(tab)[2]
+
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+  
+  #CALCULATE EXACT AUC
+  ord<-order(probs, decreasing=TRUE)
+  probs <- probs[ord]; truth <- truth[ord]
+  
+  TPR=cumsum(truth)/max(1,sum(truth)) 
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  
+  dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+  data.frame(acc,sens,spec,ppv,auc)
+}
+
+set.seed(1234)
+k = 10
+data <- Mroz[sample(nrow(Mroz)),]
+folds <- cut(seq(1:nrow(Mroz)),breaks = k, labels = FALSE)
+
+diags <- NULL
+for (i in 1:k){
+  train <- data[folds != i,]
+  test <- data[folds == i,]
+  truth <- test$lfp
+  
+  fit <- glm(lfp ~ k5 + age, data = train, family = "binomial")
+  probs <- predict(fit, newdata = test, type = "response")
+  
+  diags <- rbind(diags, class_diag(probs, truth))
+}
+
+apply(diags, 2, mean)
+```
+
+##Part 6
+  The retained variables, or the variables with a non-zero coefficient, were k5 (kids 5 and under), age, wcyes (wife attended college), lwg (log wage rate), and inc (family income excluding the wife's income). 
+```{R}
+#LASSO Regression
+Mroz_fit <- glm(lfp ~., data = Mroz, family = "binomial")
+
+response_matrix <- as.matrix(Mroz$lfp)
+predictor_matrix <- model.matrix(Mroz_fit)[,-1] 
+
+cv <- cv.glmnet(predictor_matrix, response_matrix, family = "binomial")
+lasso <- glmnet(predictor_matrix, response_matrix, family = "binomial", lambda = cv$lambda.1se)
+
+coefficients(lasso)
+```
+
+  This model crafted based on the results of the LASSO regression did only slightly better in terms of out of sample accuracy than the model in part 5 did. The out of sample accuracy for this model was 0.680, and the out of sample accuracy for the logistic regression model in part 5 was 0.620. This doesn't show a significant improvement in the predictive ability between the two models.
+```{R}
+#10-fold CV
+sig_vars <- model.matrix(Mroz_fit)[,c("k5", "age", "wcyes", "lwg", "inc")]
+sigvars_dat <- as.data.frame(sig_vars)
+sigvars_dat$lfp <- Mroz$lfp
+
+set.seed(1234)
+k = 10
+
+data2 <- sigvars_dat[sample(nrow(sigvars_dat)),]
+folds2 <- cut(seq(1:nrow(sigvars_dat)), breaks = k, labels = FALSE)
+
+diags <- NULL
+for (i in 1:k){
+  train <- data2[folds != i,]
+  test <- data2[folds == i,]
+  truth <- test$lfp
+  
+  fit <- glm(lfp ~., data = train, family = "binomial")
+  probs <- predict(fit, newdata = test, type = "response")
+  
+  diags <- rbind(diags, class_diag(probs, truth))
+}
+
+apply(diags, 2, mean)
+```
+

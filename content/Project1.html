@@ -1,0 +1,415 @@
+---
+title: "Priess_Project1"
+author: "Michaela Priess UT EID:mrp2978"
+date: "10/19/2019"
+output: html_document
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>The datasets that I chose for this project were a dataset on global life expectancy, a dataset on global health expenditure per capita, and a dataset on each country’s region and income group. The global life expectancy dataset was obtained from GitHub (<a href="https://github.com/rfordatascience/tidytuesday" class="uri">https://github.com/rfordatascience/tidytuesday</a>). This dataset contained information regarding the life expectancy in years for countries throughout the globe. The variables in the dataset were Entity, Code, Year, and Life Expectancy (Years). The Entity variable contained the name of the country, and the Code variable contained each country’s letter code. The years in this dataset ranged from 1543 to 2019. The health expenditure per capita dataset was obtained from databank.world.bank.org, lookig specifically at health nutrition and population statistics. This dataset looked at how much of their own money (without international aid) the government of different countries around the world spends yearly per person in regards to health care. The variables in this dataset were Series Name, Series Code, Country Name, Country Code, and variables for each year included in the dataset (ranging form 1960 to 2018). The amount spent was measured in US dollars. The Country Region and Income Group dataset contained information about each country’s geographical region and what income group they are categorized as. This dataset was obtained from databank.world.bank.org. The variables in this dataset were Country.Code, Region, and Income Group. These datasets were quite interesting because they give a brief, shallow insight into how national health care policies and certain country characteristics effect one of the most important health care outcomes, longevity. One of the main associations that I would expect to see would be that countries that spend a greater amount of money per person would also demonstrate longer life expectancies.</p>
+</div>
+<div id="tidying-the-data" class="section level2">
+<h2>Tidying the Data</h2>
+<p>In the health_expenditure dataset, I removed the Series.Name and Series.Code columns because they all contained the same observation and were not useful. I then used pivot_longer to move all of the variables specifying year into one “Year” column. I then used a series of separates and selects to remove all unwanted characters from the observations in the new “Year” column. Some of the countries in this dataset did not have data for certain years, and this was signified with a “..”. I used mutate to convert all “..” to NAs, and I then removed all rows containing an NA with na.omit. I renamed Country.Code to Code and Country.Name to Country in the health_expenditure dataset. In the life_expectancy dataset, I only renamed Entity to Country. In the country_info dataset, I renamed Country.Code to Code.</p>
+</div>
+<div id="joining-data" class="section level2">
+<h2>Joining Data</h2>
+<p>To join the data, I first used an inner_join on the tidy health_expenditure and life_expectancy datasets. I chose to do this type of join so that only observations that had data for both life expectancy and health expenditure in a given year were kept. I then used a left_join to add the country_info dataset. I used a left join so that region and income group data would only be added for countrys already in the dataset.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
+## ✔ tibble  2.1.3     ✔ dplyr   0.8.3
+## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
+## ✔ readr   1.3.1     ✔ forcats 0.4.0</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>life_expectancy &lt;- read.csv(&quot;~/Desktop/website/content/life-expectancy.csv&quot;)
+health_expenditure &lt;- read.csv(&quot;~/Desktop/website/content/health_expenditure.csv&quot;)
+country_info &lt;- read.csv(&quot;~/Desktop/website/content/Country_Region_and_Income_Group.csv&quot;)
+
+#Removed the columns containing Series.Name and Series.Code
+#Used pivot longer to move all of the &quot;Year&quot; variables into one column
+health1 &lt;- health_expenditure %&gt;% select(-Series.Name, -Series.Code) %&gt;%
+  pivot_longer(3:61, names_to = &quot;Year&quot;, values_to = &quot;health_expenditure_per_capita&quot;)
+
+#Used a series of separate and select to remove excess characters in the observations
+#Some countries had years with no health_expenditure data, and no data was signified by &quot;..&quot;
+#I turned all &quot;..&quot; into &quot;NA&quot;, and then I removed all NAs with na.omit
+health2 &lt;- health1 %&gt;% separate(Year, into = c(&quot;Year2&quot;, &quot;Year&quot;)) %&gt;%
+  select(-Year2) %&gt;%
+  separate(Year, into = c(&quot;Extra&quot;, &quot;Year&quot;), sep = 2, convert = T) %&gt;%
+  select(-Extra) %&gt;%
+  mutate(health_expenditure_per_capita = na_if(health_expenditure_per_capita, &quot;..&quot;)) %&gt;%
+  na.omit(health_expenditure_per_capita)</code></pre>
+<pre><code>## Warning: Expected 2 pieces. Additional pieces discarded in 15576 rows [1, 2, 3,
+## 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, ...].</code></pre>
+<pre class="r"><code>#Renamed Country.Code to Code and Country.Name to Country for joining
+health3 &lt;- health2 %&gt;% rename(Code = Country.Code, Country = Country.Name)
+
+#Renamed Entity to Country
+life1 &lt;- life_expectancy %&gt;% rename(Country = Entity)
+
+#Rename Country.Code to Code
+country1 &lt;- country_info %&gt;% rename(Code = Country.Code)
+
+#Joined datasets using an inner_join and a left_join
+data &lt;- inner_join(health3, life1, by = c(&quot;Country&quot; = &quot;Country&quot;, &quot;Code&quot; = &quot;Code&quot;, &quot;Year&quot; = &quot;Year&quot;))</code></pre>
+<pre><code>## Warning: Column `Country` joining factors with different levels, coercing to
+## character vector</code></pre>
+<pre><code>## Warning: Column `Code` joining factors with different levels, coercing to
+## character vector</code></pre>
+<pre class="r"><code>data_1 &lt;- left_join(data, country1, by = &quot;Code&quot;)</code></pre>
+<pre><code>## Warning: Column `Code` joining character vector and factor, coercing into
+## character vector</code></pre>
+<pre class="r"><code>#Used mutate to change health_expenditure_per_capita to a numeric variable 
+data1 &lt;- data_1 %&gt;% mutate(health_expenditure_per_capita = as.numeric(as.character(health_expenditure_per_capita))) 
+
+#Joined dataset
+glimpse(data1)</code></pre>
+<pre><code>## Observations: 2,786
+## Variables: 10
+## $ Country                       &lt;chr&gt; &quot;Afghanistan&quot;, &quot;Afghanistan&quot;, &quot;Afghanis…
+## $ Code                          &lt;chr&gt; &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG…
+## $ Year                          &lt;int&gt; 2002, 2003, 2004, 2005, 2006, 2007, 200…
+## $ health_expenditure_per_capita &lt;dbl&gt; 0.1448523, 1.2734034, 1.1583711, 1.3003…
+## $ Life.expectancy..years.       &lt;dbl&gt; 56.784, 57.271, 57.772, 58.290, 58.826,…
+## $ X                             &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.1                           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.2                           &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ Region                        &lt;fct&gt; South Asia, South Asia, South Asia, Sou…
+## $ IncomeGroup                   &lt;fct&gt; Low income, Low income, Low income, Low…</code></pre>
+</div>
+<div id="results-found-through-wrangling" class="section level2">
+<h2>Results Found Through Wrangling</h2>
+<p>I started off by finding out how many years each country had data for. I found that for the whole dataset, the most recent data was from 2016, and the earliest data was from 2000. For 2016, the maximum life expectancy was 86.049 years in Monaco, and the maximum health expenditure was $8077.926 in the United States. For the year 2000, the minimum life expectancy was 39.441 in Sierra Leone, and the minimum health expenditure was $0.434 in Myanmar. Without filtering by year, the maximum life expectancy in the dataset was 86.049 years in Mocaco, and the minimum life expectancy in the dataset was 39.441 in Sierra Leone. The maximum health expenditure was $8077.926 in the United States, and the minimum health expenditure was $0.145 in Afghanistan.</p>
+<pre class="r"><code>#Finding how many years data was collected for each country
+glimpse(data1 %&gt;% group_by(Country) %&gt;% select(Country, Year) %&gt;% summarize(n_distinct(Year)))</code></pre>
+<pre><code>## Observations: 166
+## Variables: 2
+## $ Country            &lt;chr&gt; &quot;Afghanistan&quot;, &quot;Albania&quot;, &quot;Algeria&quot;, &quot;Andorra&quot;, &quot;A…
+## $ `n_distinct(Year)` &lt;int&gt; 15, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17…</code></pre>
+<pre class="r"><code>#Finging most recent year there is data for and earliest year data was collected
+data1 %&gt;% summarise(max(Year))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `max(Year)`
+##         &lt;int&gt;
+## 1        2016</code></pre>
+<pre class="r"><code>data1 %&gt;% summarize(min(Year))  </code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   `min(Year)`
+##         &lt;int&gt;
+## 1        2000</code></pre>
+<pre class="r"><code>#Finding max life expectancy and health expenditure (and the respective country) for most recent data
+data1 %&gt;% filter(Year == 2016) %&gt;% arrange(desc(Life.expectancy..years.)) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Monaco  MCO    2016            2339.             86.0 NA    NA       NA Europ…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>data1 %&gt;% filter(Year == 2016) %&gt;% arrange(desc(health_expenditure_per_capita)) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 United… USA    2016            8078.             78.9 NA    NA       NA North…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>#Finding minimum life expectancy and health expenditure (and the respective countries) for earliest data
+data1 %&gt;% filter(Year == 2000) %&gt;% arrange(Life.expectancy..years.) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Sierra… SLE    2000             4.22             39.4 NA    NA       NA Sub-S…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>data1 %&gt;% filter(Year == 2000) %&gt;% arrange(health_expenditure_per_capita) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Myanmar MMR    2000            0.434             60.1 NA    NA       NA East …
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>#Finding max and min life expectancy and health expenditure (irrespective of year)
+data1 %&gt;% select(Country, Life.expectancy..years.) %&gt;% arrange(desc(Life.expectancy..years.)) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   Country Life.expectancy..years.
+##   &lt;chr&gt;                     &lt;dbl&gt;
+## 1 Monaco                     86.0</code></pre>
+<pre class="r"><code>data1 %&gt;% select(Country, Life.expectancy..years.) %&gt;% arrange(Life.expectancy..years.) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   Country      Life.expectancy..years.
+##   &lt;chr&gt;                          &lt;dbl&gt;
+## 1 Sierra Leone                    39.4</code></pre>
+<pre class="r"><code>data1 %&gt;% select(Country, health_expenditure_per_capita) %&gt;% arrange(desc(health_expenditure_per_capita)) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   Country       health_expenditure_per_capita
+##   &lt;chr&gt;                                 &lt;dbl&gt;
+## 1 United States                         8078.</code></pre>
+<pre class="r"><code>data1 %&gt;% select(Country, health_expenditure_per_capita) %&gt;% arrange(health_expenditure_per_capita) %&gt;% slice(1)</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   Country     health_expenditure_per_capita
+##   &lt;chr&gt;                               &lt;dbl&gt;
+## 1 Afghanistan                         0.145</code></pre>
+<p>Using mutate, I found the change in life expectancy and expenditure change that every country experienced between each year. I found that the only two numeric variables in my dataset, life expectancy and health expenditure, have a correlation of 0.546 with each other, which was slightly weaker than I thought it would be. I then proceeded to calculate the mean, median, and standard deviation of health expenditure and life expectancy for each country in the dataset. Norway had the highest average health expenditure, and Monaco had the greatest average life expectancy. I then repeated those same calculations, but I grouped by year rather than by country. Year 2014 had the greatest average health expenditure, and Year 2016 demonstrated the greatest average life expectancy. The results obtained from the grouped by year calculations seemed to indicate that life expectancy has been increasing over time from 2000 to 2016. I also calculated the mean health expenditure and life expectancy for each region represented in the dataset.</p>
+<pre class="r"><code>#Calculating life expectancy and expenditure change of each country between years
+data2 &lt;- data1 %&gt;% group_by(Country) %&gt;%
+  mutate(expenditure_change = health_expenditure_per_capita - lag(health_expenditure_per_capita, n = 1)) %&gt;%
+  mutate(life_expectancy_change = Life.expectancy..years. - lag(Life.expectancy..years., n = 1))
+
+#Correlation between numeric variables
+cor(data2$health_expenditure_per_capita, data2$Life.expectancy..years.)</code></pre>
+<pre><code>## [1] 0.5461216</code></pre>
+<pre class="r"><code>#Calculating mean health_expenditure and life_expectancy by country
+data3 &lt;- data2 %&gt;% 
+  mutate(expenditure_mean = mean(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_mean = mean(Life.expectancy..years.))
+
+data3 %&gt;% select(Country, expenditure_mean, life_expectancy_mean) %&gt;% unique() %&gt;%
+  arrange(desc(expenditure_mean)) %&gt;% glimpse()</code></pre>
+<pre><code>## Observations: 166
+## Variables: 3
+## Groups: Country [166]
+## $ Country              &lt;chr&gt; &quot;Norway&quot;, &quot;Luxembourg&quot;, &quot;Switzerland&quot;, &quot;Denmark&quot;…
+## $ expenditure_mean     &lt;dbl&gt; 5561.613, 5055.674, 4449.188, 4186.507, 4000.304…
+## $ life_expectancy_mean &lt;dbl&gt; 80.58671, 79.76735, 81.74365, 78.77424, 78.12182…</code></pre>
+<pre class="r"><code>data3 %&gt;% select(Country, expenditure_mean, life_expectancy_mean) %&gt;% unique() %&gt;%
+  arrange(desc(life_expectancy_mean)) %&gt;% glimpse()</code></pre>
+<pre><code>## Observations: 166
+## Variables: 3
+## Groups: Country [166]
+## $ Country              &lt;chr&gt; &quot;Monaco&quot;, &quot;San Marino&quot;, &quot;Japan&quot;, &quot;Switzerland&quot;, …
+## $ expenditure_mean     &lt;dbl&gt; 2308.2989, 2617.7701, 2866.1623, 4449.1881, 2092…
+## $ life_expectancy_mean &lt;dbl&gt; 83.85547, 83.00453, 82.67782, 81.74365, 81.46665…</code></pre>
+<pre class="r"><code>#Calculating median health_expenditure and life_expectancy by country
+data4 &lt;- data3 %&gt;% 
+  mutate(expenditure_median = median(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_median = median(Life.expectancy..years.))
+
+#Calculating sdev of health_expenditure and life_expectancy by country
+data5 &lt;- data4 %&gt;% 
+  mutate(expenditure_sdev = sd(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_sdev = sd(Life.expectancy..years.))
+
+glimpse(data5)</code></pre>
+<pre><code>## Observations: 2,786
+## Variables: 18
+## Groups: Country [166]
+## $ Country                       &lt;chr&gt; &quot;Afghanistan&quot;, &quot;Afghanistan&quot;, &quot;Afghanis…
+## $ Code                          &lt;chr&gt; &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG…
+## $ Year                          &lt;int&gt; 2002, 2003, 2004, 2005, 2006, 2007, 200…
+## $ health_expenditure_per_capita &lt;dbl&gt; 0.1448523, 1.2734034, 1.1583711, 1.3003…
+## $ Life.expectancy..years.       &lt;dbl&gt; 56.784, 57.271, 57.772, 58.290, 58.826,…
+## $ X                             &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.1                           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.2                           &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ Region                        &lt;fct&gt; South Asia, South Asia, South Asia, Sou…
+## $ IncomeGroup                   &lt;fct&gt; Low income, Low income, Low income, Low…
+## $ expenditure_change            &lt;dbl&gt; NA, 1.12855116, -0.11503231, 0.14202387…
+## $ life_expectancy_change        &lt;dbl&gt; NA, 0.487, 0.501, 0.518, 0.536, 0.549, …
+## $ expenditure_mean              &lt;dbl&gt; 2.077731, 2.077731, 2.077731, 2.077731,…
+## $ life_expectancy_mean          &lt;dbl&gt; 60.39987, 60.39987, 60.39987, 60.39987,…
+## $ expenditure_median            &lt;dbl&gt; 2.291791, 2.291791, 2.291791, 2.291791,…
+## $ life_expectancy_median        &lt;dbl&gt; 60.484, 60.484, 60.484, 60.484, 60.484,…
+## $ expenditure_sdev              &lt;dbl&gt; 0.8713654, 0.8713654, 0.8713654, 0.8713…
+## $ life_expectancy_sdev          &lt;dbl&gt; 2.294597, 2.294597, 2.294597, 2.294597,…</code></pre>
+<pre class="r"><code>#Calculating mean health_expenditure and life_expectancy by year
+data6 &lt;- data2 %&gt;% group_by(Year) %&gt;%
+  mutate(expenditure_mean = mean(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_mean = mean(Life.expectancy..years.))
+
+data6 %&gt;% select(Year, expenditure_mean, life_expectancy_mean) %&gt;% unique() %&gt;% 
+  arrange(desc(expenditure_mean)) %&gt;% glimpse()</code></pre>
+<pre><code>## Observations: 17
+## Variables: 3
+## Groups: Year [17]
+## $ Year                 &lt;int&gt; 2014, 2013, 2011, 2012, 2016, 2015, 2008, 2010, …
+## $ expenditure_mean     &lt;dbl&gt; 868.0608, 832.3748, 806.3181, 798.7719, 792.4780…
+## $ life_expectancy_mean &lt;dbl&gt; 71.62384, 71.29638, 70.58413, 70.94563, 72.22381…</code></pre>
+<pre class="r"><code>data6 %&gt;% select(Year, expenditure_mean, life_expectancy_mean) %&gt;% unique() %&gt;% 
+  arrange(desc(life_expectancy_mean)) %&gt;% glimpse()</code></pre>
+<pre><code>## Observations: 17
+## Variables: 3
+## Groups: Year [17]
+## $ Year                 &lt;int&gt; 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, …
+## $ expenditure_mean     &lt;dbl&gt; 792.4780, 780.8066, 868.0608, 832.3748, 798.7719…
+## $ life_expectancy_mean &lt;dbl&gt; 72.22381, 71.92456, 71.62384, 71.29638, 70.94563…</code></pre>
+<pre class="r"><code>#Calculating median health_expenditure and life_expectancy by year
+data7 &lt;- data6 %&gt;% 
+  mutate(expenditure_median = median(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_median = median(Life.expectancy..years.))
+
+#Calculating sdev of health_expenditure and life_expectancy by year
+data8 &lt;- data7 %&gt;% 
+  mutate(expenditure_sdev = sd(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_sdev = sd(Life.expectancy..years.))
+
+glimpse(data8)</code></pre>
+<pre><code>## Observations: 2,786
+## Variables: 18
+## Groups: Year [17]
+## $ Country                       &lt;chr&gt; &quot;Afghanistan&quot;, &quot;Afghanistan&quot;, &quot;Afghanis…
+## $ Code                          &lt;chr&gt; &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG&quot;, &quot;AFG…
+## $ Year                          &lt;int&gt; 2002, 2003, 2004, 2005, 2006, 2007, 200…
+## $ health_expenditure_per_capita &lt;dbl&gt; 0.1448523, 1.2734034, 1.1583711, 1.3003…
+## $ Life.expectancy..years.       &lt;dbl&gt; 56.784, 57.271, 57.772, 58.290, 58.826,…
+## $ X                             &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.1                           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ X.2                           &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+## $ Region                        &lt;fct&gt; South Asia, South Asia, South Asia, Sou…
+## $ IncomeGroup                   &lt;fct&gt; Low income, Low income, Low income, Low…
+## $ expenditure_change            &lt;dbl&gt; NA, 1.12855116, -0.11503231, 0.14202387…
+## $ life_expectancy_change        &lt;dbl&gt; NA, 0.487, 0.501, 0.518, 0.536, 0.549, …
+## $ expenditure_mean              &lt;dbl&gt; 360.0607, 439.2127, 502.4638, 541.6672,…
+## $ life_expectancy_mean          &lt;dbl&gt; 67.46117, 67.78355, 68.11218, 68.45538,…
+## $ expenditure_median            &lt;dbl&gt; 62.77962, 75.23234, 83.40540, 95.21582,…
+## $ life_expectancy_median        &lt;dbl&gt; 70.4290, 70.6690, 71.0000, 71.4310, 71.…
+## $ expenditure_sdev              &lt;dbl&gt; 666.6181, 821.7836, 945.4965, 1010.6808…
+## $ life_expectancy_sdev          &lt;dbl&gt; 10.226785, 10.122012, 10.013324, 9.8705…</code></pre>
+<pre class="r"><code>#Mean health_expenditure and life_expectancy by income group
+data9 &lt;- data2 %&gt;% group_by(IncomeGroup) %&gt;% 
+  mutate(expenditure_mean = mean(health_expenditure_per_capita)) %&gt;%
+  mutate(life_expectancy_mean = mean(Life.expectancy..years.))
+
+data9 %&gt;% select(IncomeGroup, expenditure_mean, life_expectancy_mean) %&gt;% unique() %&gt;% arrange(desc(expenditure_mean))</code></pre>
+<pre><code>## # A tibble: 4 x 3
+## # Groups:   IncomeGroup [4]
+##   IncomeGroup         expenditure_mean life_expectancy_mean
+##   &lt;fct&gt;                          &lt;dbl&gt;                &lt;dbl&gt;
+## 1 High income                  1807.                   78.3
+## 2 Upper middle income           175.                   70.7
+## 3 Lower middle income            37.3                  64.1
+## 4 Low income                      6.11                 56.6</code></pre>
+</div>
+<div id="visualizations" class="section level2">
+<h2>Visualizations</h2>
+<pre class="r"><code>library(ggplot2)
+
+#Bar graph grouped by year
+data8 %&gt;% ggplot(aes(x = Year, y = Life.expectancy..years., fill = expenditure_mean)) +
+  geom_bar(stat = &quot;summary&quot;, fun.y = &quot;mean&quot;) +
+  geom_errorbar(stat = &quot;summary&quot;, width = 0.75) +
+  scale_fill_gradient(low = &quot;red&quot;, high = &quot;green&quot;) +
+  xlab(&quot;Year&quot;) + ylab(&quot;Life Expectancy (Years)&quot;) +
+  ggtitle(&quot;Average Global Life Expectancy and Health Expenditure from 2000-2016&quot;) +
+  labs(fill = &quot;Average Health Expenditure Per Capita (US Dollars)&quot;)</code></pre>
+<pre><code>## No summary function supplied, defaulting to `mean_se()</code></pre>
+<p><img src="/Project1_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>From 2000 to 2016, it seems that life expectancy and health expenditure per capita have increased globally. As was seen in the results previously, global average health expenditure was greatest in 2014.</p>
+<pre class="r"><code>#Bar graph grouped by Income Group
+data9 %&gt;% ggplot(aes(x = IncomeGroup, y = Life.expectancy..years., fill = expenditure_mean)) +
+  geom_bar(stat = &quot;summary&quot;, fun.y = &quot;mean&quot;, color = &quot;black&quot;) +
+  theme(axis.text.x = element_text(size = 5)) +
+  scale_fill_gradient(low = &quot;light blue&quot;, high = &quot;green&quot;) +
+  xlab(&quot;Income Group&quot;) +
+  ylab(&quot;Life Expectancy (Years)&quot;) +
+  ggtitle(&quot;Average Life Expectancy and Health Expenditure Per Capita by Income Group&quot;) +
+  labs(fill = &quot;Health Expenditure (US $)&quot;)</code></pre>
+<p><img src="/Project1_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>As was expected, high income countries demonstrate longer life expectancies on average, and low income countries demonstrate the lowest average life expectancy. There appear to be drastic differences in average health expenditure per capita between the High Income Group and the other groups (Low, Lower Middle, and Upper Middle) collectively.</p>
+<pre class="r"><code>#scatter plot of health expenditure vs. life expectancy
+data8 %&gt;% ggplot(aes(x = health_expenditure_per_capita, y = Life.expectancy..years., color = Region)) +
+  geom_point(size = 1) +
+  geom_smooth(color = &quot;black&quot;) +
+  xlab(&quot;Health Expenditure Per Capita (US Dollars)&quot;) +
+  ylab(&quot;Life Expectancy (Years)&quot;) +
+  ggtitle(&quot;Health Expenditure Per Capita vs. Life Expectancy&quot;)</code></pre>
+<pre><code>## `geom_smooth()` using method = &#39;gam&#39; and formula &#39;y ~ s(x, bs = &quot;cs&quot;)&#39;</code></pre>
+<p><img src="/Project1_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>This graph indicated that the relationship between health expenditure and life expectancy was not linear, with the relationship looking more like a logarithmic function. Between $0 and $1000 dollars, there was sharp increase in life expectancy. Greater than $1000 however, there did not appear to be a significant change in life expectancy. This indicates that there must be other variables affecting life expectancy outside of health expenditure per capita. In addition, Sub-Saharan Africa appears to have some of the lowest life expectancies and health expenditure per capita as compared to other regions.</p>
+</div>
+<div id="dimensionality-reduction" class="section level2">
+<h2>Dimensionality Reduction</h2>
+<p>First, I scaled my variables. To chose the number of clusters, I looked at silhouette width in regards to cluster number. The highest silhouette width occurred at 2 clusters, so I decided to use 2 clusters in my analysis. I then ran the clustering analysis using PAM. Looking at the clusters more specifically, cluster 1 had a mean health expenditure per capita of $39.636 and a mean life expectancy of 57.603 years. For cluster 2, the mean health expenditure was $905.235 and the mean life expectancy was 74.933 years. It was found that Zambia was the country most representative of cluster 1, and Serbia was the country most representative of cluster 2. Overall, the clustering results were not incredibly informative. I thought that the two clusters may potentially represent a distinction between lower- and higher-income countries. Using Gower dissimilarity values, I included the variable Income Group in my analysis. From this analysis, I found that Liberia and Togo were the countries most similar to each other, and Norway and Sierra Leone were the countries most different from one another. From these results, I was also able to see how the different Income Groups in the dataset contributed to each of the two clusters. Cluster 2 was almost exclusively comprised of countries classified as “High Income” with the High Income Group contributing to about 99.887% of cluster 2. Cluster 1 was about 21% Low Income, 33% Lower Middle Income, and 45% Upper Middle Income. Based off of these results, I found that Guyana was most representative of cluster 1, and Portugal was most representative of cluster 2.</p>
+<pre class="r"><code>library(cluster)
+clust_data &lt;- data1 %&gt;% select(health_expenditure_per_capita, Life.expectancy..years.)
+
+#Pam clustering
+#Process data by scaling it
+pam1 &lt;- clust_data %&gt;% scale() %&gt;% pam(k=2)
+
+#Determining Number of Clusters with Silhouette Width
+sil_width2 &lt;- vector()
+for(i in 2:10){
+  pam_fit &lt;- pam(clust_data, k = i)
+  sil_width2[i] &lt;- pam_fit$silinfo$avg.width
+}
+
+ggplot()+
+  geom_line(aes(x = 1:10, y = sil_width2)) +
+  scale_x_continuous(name = &quot;k&quot;, breaks = 1:10)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_path).</code></pre>
+<p><img src="/Project1_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code>pamclust &lt;- clust_data %&gt;% mutate(cluster = as.factor(pam1$clustering))
+
+#Visualize
+pamclust %&gt;% ggplot(aes(health_expenditure_per_capita, Life.expectancy..years., color = cluster)) + 
+  geom_point() + xlab(&quot;Health Expenditure Per Capita (US Dollars)&quot;) +
+  ylab(&quot;Life Expectancy (Years)&quot;) + ggtitle(&quot;PAM Clustering&quot;)</code></pre>
+<p><img src="/Project1_files/figure-html/unnamed-chunk-7-2.png" width="672" /></p>
+<pre class="r"><code>#Average health_expenditure and life_expectancy for each cluster
+pamclust %&gt;% group_by(cluster) %&gt;%
+  summarize_if(is.numeric, mean, na.rm = T)</code></pre>
+<pre><code>## # A tibble: 2 x 3
+##   cluster health_expenditure_per_capita Life.expectancy..years.
+##   &lt;fct&gt;                           &lt;dbl&gt;                   &lt;dbl&gt;
+## 1 1                                39.6                    57.6
+## 2 2                               905.                     74.9</code></pre>
+<pre class="r"><code>#Countries most representative of each cluster
+data1[pam1$id.med,]</code></pre>
+<pre><code>## # A tibble: 2 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Zambia  ZMB    2012             22.5             58.5 NA    NA       NA Sub-S…
+## 2 Serbia  SRB    2009            355.              73.8 NA    NA       NA Europ…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>#Gower dissimilarities
+dat2 &lt;- data1 %&gt;% select(health_expenditure_per_capita, Life.expectancy..years., IncomeGroup)
+
+gower1 &lt;- daisy(dat2, metric = &quot;gower&quot;)
+pam2 &lt;- pam(gower1, k=2, diss = T)
+
+gower1 %&gt;% as.matrix %&gt;% as.data.frame %&gt;%
+  rownames_to_column %&gt;% pivot_longer(-1, values_to = &quot;distance&quot;) %&gt;%
+  filter(rowname != name) %&gt;% distinct(distance, .keep_all = T) %&gt;%
+  filter(distance %in% c(min(distance), max(distance)))</code></pre>
+<pre><code>## # A tibble: 2 x 3
+##   rowname name    distance
+##   &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt;
+## 1 1427    2492  0.00000220
+## 2 1909    2253  0.959</code></pre>
+<pre class="r"><code>#Countries most similar to one another
+data1 %&gt;% slice(1427, 2492)</code></pre>
+<pre><code>## # A tibble: 2 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Liberia LBR    2003             1.22             53.6 NA    NA       NA Sub-S…
+## 2 Togo    TGO    2001             1.27             53.6 NA    NA       NA Sub-S…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>#Countries most different from one another
+data1 %&gt;% slice(1909, 2253)</code></pre>
+<pre><code>## # A tibble: 2 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Norway  NOR    2013          7857.               81.7 NA    NA       NA Europ…
+## 2 Sierra… SLE    2000             4.22             39.4 NA    NA       NA Sub-S…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+<pre class="r"><code>#Proportion of Income Group in Each Cluster
+dat2 %&gt;% mutate(cluster = pam2$clustering) %&gt;%
+  group_by(cluster) %&gt;% filter(!is.na(IncomeGroup)) %&gt;% 
+  count(IncomeGroup) %&gt;% mutate(prop = n/sum(n)) %&gt;%
+  pivot_wider(-n, names_from = IncomeGroup, values_from = prop, values_fill = list(prop = 0))</code></pre>
+<pre><code>## # A tibble: 2 x 5
+## # Groups:   cluster [2]
+##   cluster `Low income` `Lower middle income` `Upper middle income` `High income`
+##     &lt;int&gt;        &lt;dbl&gt;                 &lt;dbl&gt;                 &lt;dbl&gt;         &lt;dbl&gt;
+## 1       1        0.214               0.334                   0.452         0    
+## 2       2        0                   0.00113                 0             0.999</code></pre>
+<pre class="r"><code>#Countries most representative of each cluster
+data1[pam2$id.med,]</code></pre>
+<pre><code>## # A tibble: 2 x 10
+##   Country Code   Year health_expendit… Life.expectancy… X     X.1     X.2 Region
+##   &lt;chr&gt;   &lt;chr&gt; &lt;int&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt; &lt;int&gt; &lt;fct&gt; 
+## 1 Guyana  GUY    2008             42.2             67.5 NA    NA       NA Latin…
+## 2 Portug… PRT    2006           1253.              78.8 NA    NA       NA Europ…
+## # … with 1 more variable: IncomeGroup &lt;fct&gt;</code></pre>
+</div>

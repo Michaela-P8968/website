@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Blogs on Michaela Priess</title>
+    <link>/blog/</link>
+    <description>Recent content in Blogs on Michaela Priess</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Sun, 15 Dec 2019 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/blog/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Learning About Python</title>
+      <link>/blog/python-fun/</link>
+      <pubDate>Sun, 15 Dec 2019 00:00:00 +0000</pubDate>
+      
+      <guid>/blog/python-fun/</guid>
+      <description>Python in Genetics Prior to my participation in this class, I had never before worked with Python. While it was (and honestly still is) intimidating at first, I have slowly been getting more comfortable working with Python. I can now definitely see how proficiency in Python is a useful tool to have in computational biology/bioinformatics. Since my degree in biology specifically focuses on genetics and genomics, it was particularly interesting to me when we used regular expressions in python to find endonuclease target sites within a sequence of DNA.</description>
+    </item>
+    
+  </channel>
+</rss>

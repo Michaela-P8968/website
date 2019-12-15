@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "install.packages(\"blogdown\")\nblogdown::install_hugo()\n #https://github.com/nurlansu/hugo-sustain\n\nblogdown::new_site(theme=\"nurlansu/hugo-sustain\", theme_example = T)\n\nblogdown::serve_site()\n",
+    "created" : 1575499013727.000,
+    "dirty" : true,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "1190768011",
+    "id" : "98C5CFA",
+    "lastKnownWriteTime" : 4320663104,
+    "last_content_update" : 1576424120497,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

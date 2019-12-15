@@ -1,0 +1,52 @@
+---
+title: "Resume"
+author: "Michaela Priess"
+date: "12/15/2019"
+output: html_document
+---
+
+## About Me
+
+I grew up in the small town of Stonewall, Texas working on my family's peach farm with my parents and younger brother. After high school, I moved to Austin to attend college, and I am currently studying Biology and Psychology. Ultimately, my goal is to attend medical school to become a general, family physician. In my spare time, I love volunteering with several different organizations around the Austin community including the Ride On Center for Kids, Dell Children's Hospital, and Foundation Communities. Some of my favorite hobbies include reading, going to state parks to explore nature, watching musicals, and cooking/baking!
+
+## Education
+
+I am currently attending college at the University of Texas at Austin, and I am in my senior year. I plan to graduate in May with Bachelor of Science degrees in Biology and Psychology.
+
+## Work Experience
+
+#### - Undergraduate Teaching Assistant (August 2019 - Present)
+
+I am currently a writing TA for the Lab Experience in Genetics course. I am responsible for grading student's research papers, and I provide academic support for assignments during office hours and by email.
+
+#### - United States Army Institute of Surgical Research Summer Intern (Summer 2019)
+
+I worked with a team researching pain management in the context of battlefield injuries, and I conducted protein analyses to examine the effect of exosomal miRNAs in a chronic neuropathic pain model. At the end of the internship, I wrote and presented a poster over our research.
+
+## Skills
+
+- Some experience with R and C++
+- Experience with wet lab techniques including using a Wes for protein analysis
+- Some experience with research utilizing rat-models for molecular and behavioral analysis
+- Good team-working skills through participation in multiple group research projects and volunteer experiences
+- Strong oral and written communication skills
+
+## Accomplishments, Honors, and Affiliations
+
+- Distinguished College Scholar (April 2018 – Present)
+- Terry Scholar, The Terry Foundation (August 2016 – Present)
+- Member of the Women in Natural Sciences (August 2016 – Present)
+
+## Contact Information
+
+Email: mrpriess98@gmail.com
+
+Phone: (830)992-5408
+
+
+
+
+
+
+
+
